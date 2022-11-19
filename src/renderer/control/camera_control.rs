@@ -15,9 +15,12 @@ pub enum CameraAction {
     },
     /// Orbits around the given target in the up direction as seen from the camera.
     OrbitUp {
-        /// The target of the rotation.
-        target: Vec3,
         /// The speed of the rotation.
+        speed: f32,
+    },
+    /// Move the target of the orbit upwards as seen from the camera.
+    OrbitTargetUp {
+        /// The speed of the translation.
         speed: f32,
     },
     /// Rotate the camera around the vertical axis as seen from the camera.
@@ -27,9 +30,12 @@ pub enum CameraAction {
     },
     /// Orbits around the given target in the left direction as seen from the camera.
     OrbitLeft {
-        /// The target of the rotation.
-        target: Vec3,
         /// The speed of the rotation.
+        speed: f32,
+    },
+    /// Move the target of the orbit to the left as seen from the camera.
+    OrbitTargetLeft {
+        /// The speed of the translation.
         speed: f32,
     },
     /// Rotate the camera around the forward axis as seen from the camera.
@@ -54,8 +60,6 @@ pub enum CameraAction {
     },
     /// Zooms towards the given target.
     Zoom {
-        /// The target of the zoom.
-        target: Vec3,
         /// The speed of the zoom.
         speed: f32,
         /// The minimum distance to the target.
@@ -149,14 +153,43 @@ impl CameraControl {
             CameraAction::Pitch { speed } => {
                 camera.pitch(radians(speed * x as f32));
             }
-            CameraAction::OrbitUp { speed, target } => {
+            CameraAction::OrbitUp { speed } => {
+                let target = camera.target().clone();
                 camera.rotate_around_with_fixed_up(&target, 0.0, speed * x as f32);
+            }
+            CameraAction::OrbitTargetUp { speed } => {
+                // Calculate the change, allowing translation orthogonal to the current view and
+                // the right direction, which is modified by OrbitTargetLeft.
+                let view = camera.view_direction().clone();
+                let neg_right = -camera.right_direction().clone();
+                let change = x as f32 * (speed * view.cross(neg_right));
+
+                // Update the positions, moving both the target and the camera based on the pan.
+                let up = camera.up().clone();
+                let new_target = camera.target().clone() + change;
+                let position = camera.position().clone() + change;
+
+                camera.set_view(position, new_target, up);
             }
             CameraAction::Yaw { speed } => {
                 camera.yaw(radians(speed * x as f32));
             }
-            CameraAction::OrbitLeft { speed, target } => {
+            CameraAction::OrbitLeft { speed } => {
+                let target = camera.target().clone();
                 camera.rotate_around_with_fixed_up(&target, speed * x as f32, 0.0);
+            }
+            CameraAction::OrbitTargetLeft { speed } => {
+                // Calculate the change by multiplying the right direction of the camera with the
+                // speed and change.
+                let right = camera.right_direction();
+                let change = -x as f32 * right * speed;
+
+                // Update the positions, moving both the target and the camera based on the pan.
+                let new_target = camera.target().clone() + change;
+                let position = camera.position().clone() + change;
+                let up = camera.up().clone();
+
+                camera.set_view(position, new_target, up);
             }
             CameraAction::Roll { speed } => {
                 camera.roll(radians(speed * x as f32));
@@ -175,12 +208,8 @@ impl CameraControl {
                 let change = camera.view_direction() * speed * x as f32;
                 camera.translate(&change);
             }
-            CameraAction::Zoom {
-                target,
-                speed,
-                min,
-                max,
-            } => {
+            CameraAction::Zoom { speed, min, max } => {
+                let target = camera.target().clone();
                 camera.zoom_towards(&target, speed * x as f32, min, max);
             }
             CameraAction::None => {}
