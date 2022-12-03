@@ -8,7 +8,8 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-three-d = { path = "../../", features=["egui-gui"] }
+#three-d = { path = "../../", features=["egui-gui"] }
+three-d = {version = "0.15.0", features=["egui-gui"], git = "https://github.com/iwanders/asny-three-d", rev = "9bfe98bf61acfb5739c53bdbd855c73268cf4885"  }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 log = "0.4"
