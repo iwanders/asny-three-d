@@ -11,8 +11,8 @@ pub fn main() {
 
     let mut camera = Camera::new_perspective(
         window.viewport(),
-        vec3(120.00, 97.0, 122.0),   // camera position
-        vec3(115.000, 93.25, 118.5), // camera target
+        vec3(16.624178, 12.774818, 16.083841),   // camera position
+        vec3(11.624185, 9.024818, 12.583843), // camera target
         vec3(0.0, 1.0, 0.0),         // camera up
         degrees(45.0),
         0.1,
@@ -36,7 +36,7 @@ pub fn main() {
                     r: 128,
                     g: 128,
                     b: 128,
-                    a: 255,
+                    a: 128,
                 },
                 ..Default::default()
             },
@@ -45,11 +45,13 @@ pub fn main() {
 
     // Initial properties of the example, 2 cubes per side and non instanced.
     let mut side_count = 2;
-    let mut is_instanced = false;
+    let mut is_instanced = true;
 
     let mut gui = three_d::GUI::new(&context);
     window.render_loop(move |mut frame_input: FrameInput| {
         camera.set_viewport(frame_input.viewport);
+        println!("Camera pos: {:?}", camera.position());
+        println!("Camera target: {:?}", camera.target());
 
         // Gui panel to control the number of cubes and whether or not instancing is turned on.
         let mut panel_width = 0.0;
@@ -82,6 +84,7 @@ pub fn main() {
 
         // Time to move the cubes.
         let time = (frame_input.accumulated_time * 0.001) as f32;
+        let time = 0.3;
         let count = side_count * side_count * side_count;
 
         // Always update the transforms for both the normal cubes as well as the instanced versions.
@@ -99,7 +102,7 @@ pub fn main() {
                             r: 128,
                             g: 128,
                             b: 128,
-                            a: 255,
+                            a: 128,
                         },
                         ..Default::default()
                     },
@@ -109,17 +112,25 @@ pub fn main() {
 
         // Finally, calculate the cube transforms and update them.
         let rotation = Mat4::from_angle_x(Rad(time));
+        let mut colors = vec![];
         let mut transformations = Vec::new();
-        for (i, mesh) in non_instanced_meshes.iter_mut().enumerate() {
+        for (i, mesh) in non_instanced_meshes.iter_mut().enumerate().rev() {
             let x = (i % side_count) as f32;
             let y = ((i as f32 / side_count as f32).floor() as usize % side_count) as f32;
             let z = (i as f32 / side_count.pow(2) as f32).floor();
             let transformation = Mat4::from_translation(3.0 * vec3(x, y, z)) * rotation;
             mesh.set_transformation(transformation);
             transformations.push(transformation);
+            colors.push(Color {
+                r: (x / (side_count as f32) * 255.0) as u8,
+                g: (y / (side_count as f32) * 255.0) as u8,
+                b: (z / (side_count as f32) * 255.0) as u8,
+                a: 254,
+            });
         }
         instanced_mesh.set_instances(&Instances {
             transformations,
+            colors: Some(colors),
             ..Default::default()
         });
 
