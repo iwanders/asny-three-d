@@ -11,9 +11,9 @@ pub fn main() {
 
     let mut camera = Camera::new_perspective(
         window.viewport(),
-        vec3(1.4933096, 4.8070683, -9.277165), // position
+        vec3(1.4933096, 4.8070683, -9.277165),  // position
         vec3(0.14315122, 2.369473, -3.7785282), // target
-        vec3(0.0, 1.0, 0.0), // up
+        vec3(0.0, 1.0, 0.0),                    // up
         degrees(45.0),
         0.1,
         1000.0,
@@ -31,13 +31,12 @@ pub fn main() {
             Mat4::from_translation(vec3(0.0, 0.0, 0.0)),
             Mat4::from_translation(vec3(0.0, 0.0, 1.0)),
         ],
-        colors: Some( vec![
-                Color::new(0, 255, 0, 255),   // green, closest, should obscure everything.
-                Color::new(255, 0, 255, 255), // purple, behind green, second opaque plane.
-                Color::new(255, 0, 0, 128),   // Red, third plane, should be behind two opaques, blend in front of blue.
-                Color::new(0, 0, 255, 128), // Furthest, blue layer.
-            ]
-        ),
+        colors: Some(vec![
+            Color::new(0, 255, 0, 255),   // green, closest, should obscure everything.
+            Color::new(255, 0, 255, 255), // purple, behind green, second opaque plane.
+            Color::new(255, 0, 0, 128), // Red, third plane, should be behind two opaques, blend in front of blue.
+            Color::new(0, 0, 255, 128), // Furthest, blue layer.
+        ]),
         ..Default::default()
     };
     let mut transparent_meshes = Gm::new(
@@ -57,10 +56,12 @@ pub fn main() {
     );
 
     let mut thin_cube_right = CpuMesh::cube();
-    thin_cube_right.transform(&(Mat4::from_translation(vec3(-4.0, 0.0, 0.0)) * Mat4::from_nonuniform_scale(1.0, 1.0, 0.1)));
+    thin_cube_right.transform(
+        &(Mat4::from_translation(vec3(-4.0, 0.0, 0.0))
+            * Mat4::from_nonuniform_scale(1.0, 1.0, 0.1)),
+    );
 
-
-    let mut opaque_meshes = Gm::new(
+    let mut opaque_meshes_transparent_instances = Gm::new(
         InstancedMesh::new(&context, &v, &thin_cube_right),
         PhysicalMaterial::new_opaque(
             &context,
@@ -75,13 +76,50 @@ pub fn main() {
             },
         ),
     );
-    opaque_meshes.set_instance_count(3);
+    opaque_meshes_transparent_instances.set_instance_count(3);
 
+    let v = three_d::renderer::geometry::Instances {
+        transformations: v.transformations,
+        colors: Some(
+            v.colors
+                .as_ref()
+                .unwrap()
+                .iter()
+                .map(|c| Color {
+                    r: c.r,
+                    g: c.g,
+                    b: c.b,
+                    a: 255,
+                })
+                .collect(),
+        ),
+        ..Default::default()
+    };
+    let mut thin_cube_right = CpuMesh::cube();
+    thin_cube_right.transform(
+        &(Mat4::from_translation(vec3(3.0, 0.0, 0.0)) * Mat4::from_nonuniform_scale(1.0, 1.0, 0.1)),
+    );
+
+    let mut opaque_meshes_opaque_instances = Gm::new(
+        InstancedMesh::new(&context, &v, &thin_cube_right),
+        PhysicalMaterial::new_opaque(
+            &context,
+            &CpuMaterial {
+                albedo: Color {
+                    r: 255,
+                    g: 255,
+                    b: 255,
+                    a: 255,
+                },
+                ..Default::default()
+            },
+        ),
+    );
+    opaque_meshes_opaque_instances.set_instance_count(3);
 
     let light0 = DirectionalLight::new(&context, 1.0, Color::WHITE, &vec3(0.0, -0.5, -0.5));
     // let light1 = DirectionalLight::new(&context, 1.0, Color::WHITE, &vec3(0.0, 0.5, 0.5));
-    let ambient_light =
-        three_d::renderer::light::AmbientLight::new(&context, 0.1, Color::WHITE);
+    let ambient_light = three_d::renderer::light::AmbientLight::new(&context, 0.1, Color::WHITE);
 
     window.render_loop(move |mut frame_input: FrameInput| {
         camera.set_viewport(frame_input.viewport);
@@ -96,7 +134,8 @@ pub fn main() {
                 &camera,
                 transparent_meshes
                     .into_iter()
-                    .chain(&opaque_meshes),
+                    .chain(&opaque_meshes_transparent_instances)
+                    .chain(&opaque_meshes_opaque_instances),
                 &[&light0, &ambient_light],
             );
 
