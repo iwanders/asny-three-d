@@ -75,16 +75,19 @@ pub fn main() {
             },
         ),
     );
+    opaque_meshes.set_instance_count(3);
 
 
     let light0 = DirectionalLight::new(&context, 1.0, Color::WHITE, &vec3(0.0, -0.5, -0.5));
-    let light1 = DirectionalLight::new(&context, 1.0, Color::WHITE, &vec3(0.0, 0.5, 0.5));
+    // let light1 = DirectionalLight::new(&context, 1.0, Color::WHITE, &vec3(0.0, 0.5, 0.5));
+    let ambient_light =
+        three_d::renderer::light::AmbientLight::new(&context, 0.1, Color::WHITE);
 
     window.render_loop(move |mut frame_input: FrameInput| {
         camera.set_viewport(frame_input.viewport);
         control.handle_events(&mut camera, &mut frame_input.events);
-        println!("camera.target: {:?}", camera.target());
-        println!("camera.position: {:?}", camera.position());
+        // println!("camera.target: {:?}", camera.target());
+        // println!("camera.position: {:?}", camera.position());
 
         frame_input
             .screen()
@@ -94,7 +97,7 @@ pub fn main() {
                 transparent_meshes
                     .into_iter()
                     .chain(&opaque_meshes),
-                &[&light0, &light1],
+                &[&light0, &ambient_light],
             );
 
         FrameOutput::default()
