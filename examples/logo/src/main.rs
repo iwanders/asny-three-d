@@ -6,6 +6,7 @@ async fn main() {
 }
 
 use three_d::*;
+use three_d_asset::texture::TextureData;
 
 pub async fn run() {
     let window = Window::new(WindowSettings {
@@ -55,18 +56,83 @@ pub async fn run() {
         ..Default::default()
     };
 
+    let l = -0.6;
+    let r = 0.6;
+    let t = 0.6;
+    let b = -0.6;
+    let y = 0.05;
+    let positions = vec![
+        vec3(l, b + y, 0.0), // left bottom
+        vec3(r, b + y, 0.0), // right bottom
+        vec3(l, t + y, 0.0), // left top
+        vec3(r, b + y, 0.),  // right bottom
+        vec3(r, t + y, 0.),  // right top
+        vec3(l, t + y, 0.),  // left top
+    ];
+    let colors = vec![
+        Srgba::new(255, 0, 0, 0),     // left bottom
+        Srgba::new(255, 128, 255, 0), // right bottom
+        Srgba::new(0, 255, 0, 0),     // left top
+        Srgba::new(255, 128, 255, 0), // right bottom
+        Srgba::new(0, 0, 255, 0),     // right top
+        Srgba::new(0, 255, 0, 0),     // left top
+    ];
+    let cpu_mesh2 = CpuMesh {
+        positions: Positions::F32(positions),
+        colors: Some(colors),
+
+        ..Default::default()
+    };
+
     // Construct a model, with a default color material, thereby transferring the mesh data to the GPU
     let model = Gm::new(Mesh::new(&context, &cpu_mesh), ColorMaterial::default());
+    let mut model2 = Gm::new(
+        Mesh::new(&context, &cpu_mesh2),
+        ColorMaterial::new_transparent(
+            &context,
+            &CpuMaterial {
+                ..Default::default()
+            },
+        ),
+    );
+    model2.material.is_transparent = true;
+
+    model2.material.render_states = RenderStates {
+        write_mask: WriteMask {
+            red: true,
+            green: true,
+            blue: true,
+            alpha: false,
+            depth: false,
+        },
+        blend: Blend::ADD,
+        ..Default::default()
+    };
 
     window.render_loop(move |frame_input| {
         camera.set_viewport(frame_input.viewport);
 
         frame_input
             .screen()
-            .clear(ClearState::color_and_depth(1.0, 1.0, 1.0, 1.0, 1.0))
+            .clear(ClearState::color_and_depth(0.0, 0.0, 0.0, 0.0, 1.0))
             .apply_screen_material(&LogoMaterial { image: &image }, &camera, &[])
-            .render(&camera, &model, &[]);
+            .render(&camera, model2.into_iter().chain(&model), &[]);
 
+        let z = frame_input.screen().read_color::<[u8; 4]>();
+        let t = TextureData::RgbaU8(z);
+        let t = three_d_asset::material::Texture2D {
+            data: t,
+            name: "logo".to_owned(),
+            width: frame_input.viewport.width,
+            height: frame_input.viewport.height,
+            min_filter: Default::default(),
+            mag_filter: Default::default(),
+            mipmap: Default::default(),
+            wrap_s: three_d::Wrapping::ClampToEdge,
+            wrap_t: three_d::Wrapping::ClampToEdge,
+        };
+        use three_d_asset::io::Serialize;
+        let _ = t.serialize("/tmp/logo_transparent.png").unwrap().save();
         FrameOutput::default()
     });
 }
@@ -91,7 +157,7 @@ impl Material for LogoMaterial<'_> {
     fn render_states(&self) -> RenderStates {
         RenderStates {
             write_mask: WriteMask::COLOR,
-            blend: Blend::TRANSPARENCY,
+            blend: Blend::STANDARD_TRANSPARENCY,
             ..Default::default()
         }
     }
